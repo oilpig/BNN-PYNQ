@@ -380,29 +380,47 @@ void FoldedMVMemSet(unsigned int targetLayer, unsigned int targetMem, unsigned i
 }
 
 void FoldedMVInit(const char * attachName) {
-    thePlatform = initPlatform();
-    thePlatform->attach(attachName);
+    try{
+        cout << "Enter FoldedMVInit()" << endl;
+        thePlatform = initPlatform();
+        thePlatform->attach(attachName);
 
-    // allocate input/output buffers
-    // TODO should be dynamically sized based on the largest I/O
-    if (!bufIn) {
-        bufIn = new ExtMemWord[INPUT_BUF_ENTRIES];
-        if (!bufIn) throw "Failed to allocated host buffer";
+        cout << "Before allocate memory" << endl;
+        
+        // allocate input/output buffers
+        // TODO should be dynamically sized based on the largest I/O
+        if (!bufIn) {
+            bufIn = new ExtMemWord[INPUT_BUF_ENTRIES];
+            if (!bufIn) throw "Failed to allocated host buffer";
+        }
+        if (!bufOut) {
+            bufOut = new ExtMemWord[OUTPUT_BUF_ENTRIES];
+            if (!bufOut) throw "Failed to allocated host buffer";
+        }
+        if (!accelBufIn) {
+            cout << "Before allocate In accel buffer " << 1 * sizeof(ExtMemWord) << endl;
+
+            accelBufIn = thePlatform->allocAccelBuffer(1 * sizeof(ExtMemWord));
+            if (!accelBufIn) throw "Failed to allocate accel buffer";
+
+            cout << "Before allocate Out accel buffer " << OUTPUT_BUF_ENTRIES * sizeof(ExtMemWord) << endl;
+            accelBufOut = thePlatform->allocAccelBuffer(OUTPUT_BUF_ENTRIES * sizeof(ExtMemWord));
+            if (!accelBufOut) throw "Failed to allocate accel buffer";
+        }
+        // set up I/O buffer addresses for the accelerator
+        cout << "Before write64BitJamRegAddr(0x10)" << endl;
+        thePlatform->write64BitJamRegAddr(0x10, (AccelDblReg) accelBufIn);
+        cout << "Before write64BitJamRegAddr(0x1c)" << endl;        
+        thePlatform->write64BitJamRegAddr(0x1c, (AccelDblReg) accelBufOut);
+        cout << "Before writeJamRegAddr(0x28)" << endl;   
+        thePlatform->writeJamRegAddr(0x28, 0);
     }
-    if (!bufOut) {
-        bufOut = new ExtMemWord[OUTPUT_BUF_ENTRIES];
-        if (!bufOut) throw "Failed to allocated host buffer";
+    catch(const char *e){
+        cout << e << endl;        
     }
-    if (!accelBufIn) {
-        accelBufIn = thePlatform->allocAccelBuffer(INPUT_BUF_ENTRIES * sizeof(ExtMemWord));
-        if (!accelBufIn) throw "Failed to allocate accel buffer";
-        accelBufOut = thePlatform->allocAccelBuffer(OUTPUT_BUF_ENTRIES * sizeof(ExtMemWord));
-        if (!accelBufOut) throw "Failed to allocate accel buffer";
+    catch(...){
+        cout << "default exception" << endl;
     }
-    // set up I/O buffer addresses for the accelerator
-    thePlatform->write64BitJamRegAddr(0x10, (AccelDblReg) accelBufIn);
-    thePlatform->write64BitJamRegAddr(0x1c, (AccelDblReg) accelBufOut);
-    thePlatform->writeJamRegAddr(0x28, 0);
 }
 
 void FoldedMVDeinit() {
